@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 
 @Service
 class ComptesUtilisateur(
@@ -15,13 +16,22 @@ class ComptesUtilisateur(
 
     @Transactional(readOnly = true)
     override fun loadUserByUsername(email: String): UserDetails {
-        val utilisateur = utilisateurRepository.findByEmail(email) ?: throw UsernameNotFoundException("Compte indisponible")
-        val empreinte = utilisateur.empreinteMotDePasse ?: throw UsernameNotFoundException("Compte indisponible")
-        val role = utilisateur.role ?: throw UsernameNotFoundException("Compte indisponible")
-
-        return User.withUsername(utilisateur.email)
-            .password(empreinte)
-            .authorities(role.nom)
-            .build()
+        val utilisateur = utilisateurRepository.findByEmail(email)
+            ?: throw UsernameNotFoundException("Compte indisponible")
+        val empreinte = utilisateur.empreinteMotDePasse
+            ?: throw UsernameNotFoundException("Compte indisponible")
+        val role = utilisateur.role
+            ?: throw UsernameNotFoundException("Compte indisponible")
+        return CompteAuthentifie(
+            requireNotNull(utilisateur.idUtilisateur), utilisateur.email, empreinte, role.nom
+        )
     }
+
+    class CompteAuthentifie(
+        val idUtilisateur: Long,
+        email: String,
+        empreinte: String,
+        role: String
+    ) : User(email, empreinte, listOf(SimpleGrantedAuthority(role)))
+
 }
